@@ -101,7 +101,7 @@
             <artifactId>sonar-orchestrator</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sonarsource.sonarqube</groupId>
+            <groupId>org.sonarsource.api.plugin</groupId>
             <artifactId>sonar-plugin-api</artifactId>
         </dependency>
         <dependency>
@@ -118,7 +118,7 @@
             <plugin>
                 <groupId>org.sonarsource.sonar-packaging-maven-plugin</groupId>
                 <artifactId>sonar-packaging-maven-plugin</artifactId>
-                <version>1.16</version>
+                <version>1.25.1.3002</version>
                 <extensions>true</extensions>
                 <configuration>
                     <pluginClass>com.backelite.sonarqube.swift.SwiftPlugin</pluginClass>

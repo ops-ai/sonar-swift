@@ -12,8 +12,8 @@
     <artifactId>java-lang</artifactId>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <junit.jupiter.version>5.8.2</junit.jupiter.version>
     </properties>
 
@@ -84,7 +84,7 @@
             <artifactId>sonar-orchestrator</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.sonarsource.sonarqube</groupId>
+            <groupId>org.sonarsource.api.plugin</groupId>
             <artifactId>sonar-plugin-api</artifactId>
         </dependency>
         <dependency>

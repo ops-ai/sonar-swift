@@ -50,7 +50,6 @@ import com.backelite.sonarqube.swift.lang.core.Swift;
 import com.backelite.sonarqube.swift.surefire.SwiftTestFileFinder;
 import com.github.sonar.next.sonarqube.java.issues.infer.JavaInferSensor;
 import org.sonar.api.Plugin;
-import org.sonar.api.PropertyType;
 import org.sonar.api.config.PropertyDefinition;
 
 import java.util.Arrays;
@@ -102,13 +101,13 @@ public class SwiftPlugin implements Plugin {
                     .build(),
                 PropertyDefinition.builder(InferSensor.REPORT_PATH_KEY)
                     .defaultValue(InferSensor.DEFAULT_REPORT_PATH)
-                    .name("Path to Infer json formatted report")
+                    .name("Path to Infer json formatted report (Objective-C)")
                     .description("Relative to projects' root.")
                     .onQualifiers(org.sonar.api.resources.Qualifiers.PROJECT)
                     .build(),
                 PropertyDefinition.builder(JavaInferSensor.REPORT_PATH_KEY)
                     .defaultValue(JavaInferSensor.DEFAULT_REPORT_PATH)
-                    .name("Path to Infer json formatted report")
+                    .name("Path to Infer json formatted report (Java)")
                     .description("Relative to projects' root.")
                     .onQualifiers(org.sonar.api.resources.Qualifiers.PROJECT)
                     .build(),

@@ -15,6 +15,14 @@ The repository is an iOS static analysis plugin for SonarQube, supporting Object
 ![](docs/quality-profiles-infer.png)
 ![](docs/infer-bug.png)
 
+## SonarQube Compatibility
+
+**Currently Supported Version:** SonarQube 7.9 LTS
+
+**Note:** There is no SonarQube version 25. SonarQube version sequence is: 6.7 → 7.9 → 8.9 → 9.9 → 10.x
+
+For detailed compatibility information, please refer to [SONARQUBE_COMPATIBILITY.md](SONARQUBE_COMPATIBILITY.md)
+
 ## Rule Best Practices
 We invited other colleagues within the company to review the existing inference rules, and selected some rules to scan for your reference.
 ### [Rule Introduction](docs/rule.md)

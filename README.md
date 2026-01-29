@@ -21,6 +21,14 @@ SonarQube 作为一款成熟的代码扫描服务，对外提供了插件功能�
 
 1.6 版本之后最低要求 SonarQube 7.9 
 
+## SonarQube 兼容性
+
+**当前支持版本：** SonarQube 7.9 LTS
+
+**注意：** 没有 SonarQube 版本 25。SonarQube 版本序列为：6.7 → 7.9 → 8.9 → 9.9 → 10.x
+
+详细的兼容性信息请参考 [SONARQUBE_COMPATIBILITY.md](SONARQUBE_COMPATIBILITY.md)
+
 ## 规则最佳实践
 我们在公司内部邀请其他同事共同Review了现有的Infer规则，筛选出了部分规则进行扫描，供大家参考。
 

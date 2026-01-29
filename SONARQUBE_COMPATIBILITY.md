@@ -115,10 +115,11 @@ For production use, we recommend:
 
 ## Further Information
 
-For the latest SonarQube API documentation:
-- [Plugin API Documentation](https://docs.sonarqube.org/latest/extend/developing-plugin/)
+For SonarQube API documentation:
+- [Plugin API Documentation (Latest)](https://docs.sonarqube.org/latest/extend/developing-plugin/) - Note: Shows latest version docs
+- [Plugin API Documentation (7.9)](https://docs.sonarqube.org/7.9/extend/developing-plugin/) - Specific to current target version
 - [SonarQube Release Notes](https://www.sonarqube.org/downloads/)
-- [API Javadoc](https://javadoc.io/doc/org.sonarsource.sonarqube/sonar-plugin-api/)
+- [API Javadoc (7.9)](https://javadoc.io/doc/org.sonarsource.sonarqube/sonar-plugin-api/7.9)
 
 ## Questions or Issues?
 

@@ -3,9 +3,10 @@
 ## Current Status
 
 **Plugin Version:** 1.8.0  
-**Minimum SonarQube Version:** 7.9 LTS  
-**Tested With:** SonarQube 7.9  
-**Build Target:** SonarQube API 7.9
+**Minimum SonarQube Version:** 9.9 LTS (upgrade in progress)  
+**Java Version:** 17  
+**Tested With:** Upgrade to Java 17 completed, SonarQube 9.9/10.x testing pending  
+**Build Target:** SonarQube API 9.9.0.65466
 
 ## SonarQube Version Clarification
 
@@ -26,33 +27,45 @@ If you are referring to "SonarQube 25," you might mean:
 
 ### SonarQube 8.x Compatibility
 
-The plugin should work with SonarQube 8.x with minimal changes:
+The plugin may work with SonarQube 8.x with Java 17:
 - ✅ PropertyDefinition API is compatible (we use the modern API)
 - ✅ Sensor API is stable
 - ✅ Rules Definition API is compatible
-- ⚠️ Some deprecations may generate warnings but should not break functionality
+- ⚠️ ProfileImporter deprecated (still works but with warnings)
 
-**Status:** Likely compatible, needs testing
+**Status:** Not tested, upgrade to 9.9+ recommended
 
 ### SonarQube 9.x Compatibility
 
-Changes required for SonarQube 9.9 LTS:
-- Update `sonar.version` to `9.9.0.65466`
-- Update `sonar-orchestrator.version` to appropriate version
-- Verify no breaking API changes
-- Test all sensors and rules definitions
+Upgraded to support SonarQube 9.9 LTS:
+- ✅ Java 17 support
+- ✅ Updated dependencies
+- ✅ Modern API usage
+- ❌ ProfileImporter removed (requires code changes)
 
-**Status:** Requires updates and testing
+**Status:** Code upgrade complete, testing pending
+
+**Required Changes:**
+- Remove ProfileImporter classes (deprecated and removed in 9.x)
+- Use JSON-based quality profile definitions instead
 
 ### SonarQube 10.x Compatibility
 
-Major changes in SonarQube 10.x:
-- **Java 17+ required** (currently using Java 8)
-- Modernized APIs
-- Potential breaking changes in sensor API
-- Updated testing framework
+To use SonarQube 10.x:
+- ✅ Java 17 required (completed)
+- ✅ Updated build configuration (completed)
+- ⚠️ Update sonar.version to 10.4.0.87286
+- ❌ Additional API changes may be needed
+- ❌ Testing required
 
-**Status:** Requires significant updates
+**Status:** Ready for upgrade from 9.9 baseline
+
+**Changes Needed:**
+```xml
+<sonarQubeMinVersion>10.0</sonarQubeMinVersion>
+<sonar.version>10.4.0.87286</sonar.version>
+<sonar-packaging-maven-plugin.version>1.23.0.740</sonar-packaging-maven-plugin.version>
+```
 
 ## API Features Currently Used
 
@@ -101,17 +114,35 @@ To upgrade the plugin for compatibility with newer SonarQube versions:
 ## Recommendation
 
 For production use, we recommend:
-- **SonarQube 7.9 LTS** - Fully tested and supported ✅
-- **SonarQube 8.9 LTS** - Should work, needs validation
-- **SonarQube 9.9 LTS** - Requires plugin update
-- **SonarQube 10.x** - Requires significant updates (Java 17+)
+- **SonarQube 9.9 LTS** - Current upgrade target, requires ProfileImporter removal ⚠️
+- **SonarQube 10.x** - Ready for upgrade after 9.9 validation
+- **Java 17** - Now required for all versions ✅
+
+## Upgrade Guide
+
+For detailed upgrade instructions, see [UPGRADE_GUIDE.md](UPGRADE_GUIDE.md)
 
 ## Known Limitations
 
-- Plugin is built with Java 8 target
-- Uses older SSLR versions (1.23)
-- StaxMate dependencies explicitly added for 7.9+ compatibility
+- Plugin now requires Java 17 (no longer supports Java 8)
+- ProfileImporter API removed in SonarQube 9.x (code changes required)
+- SonarQube dependencies not available in Maven Central (requires SonarSource repository access)
 - Some test dependencies may need updates for newer SonarQube versions
+
+## Change Log
+
+### Version 1.8.0 (In Progress)
+- ✅ Upgraded to Java 17
+- ✅ Updated Maven compiler plugin to 3.11.0
+- ✅ Updated all dependencies to Java 17 compatible versions
+- ✅ Updated SonarQube API target to 9.9.0.65466
+- ⚠️ ProfileImporter removal pending
+- ⚠️ Testing with SonarQube 9.9/10.x pending
+
+### Version 1.7.0 (Previous)
+- Upgraded from SonarQube 6.7 to 7.9
+- Replaced @Property annotations with PropertyDefinition
+- Added StaxMate dependencies
 
 ## Further Information
 

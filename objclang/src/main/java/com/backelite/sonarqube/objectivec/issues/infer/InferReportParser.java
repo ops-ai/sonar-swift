@@ -10,8 +10,8 @@ import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.sensor.SensorContext;
+import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.batch.sensor.issue.NewIssueLocation;
-import org.sonar.api.batch.sensor.issue.internal.DefaultIssueLocation;
 import org.sonar.api.rule.RuleKey;
 
 import java.io.File;
@@ -20,11 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @author wuwenguang magaofei
- * @date 2020/10/27
- * infer parser
- */
 public class InferReportParser {
 
     private static final Logger logger = LoggerFactory.getLogger(InferReportParser.class);
@@ -37,30 +32,22 @@ public class InferReportParser {
     }
 
     public void parseReport(File jsonFile) {
-
         try (FileReader fr = new FileReader(jsonFile)) {
-            // Read and parse report
             Object reportObj = JSONValue.parse(fr);
-
-            // Record issues
             if (reportObj != null) {
                 JSONArray reportJson = (JSONArray) reportObj;
                 for (Object obj : reportJson) {
                     this.recordIssue((JSONObject) obj);
                 }
             }
-
         } catch (IOException e) {
             logger.error("Failed to parse Infer report file", e);
-
         }
     }
 
     private void recordIssue(final JSONObject jsonObject) {
-
         String filePath = (String) jsonObject.get("file");
         if (filePath != null) {
-
             JSONArray bugTraceJsonArray = (JSONArray) jsonObject.get("bug_trace");
             int lineNum = Integer.parseInt(String.valueOf(jsonObject.get("line")));
             if (bugTraceJsonArray.size() == 1) {
@@ -79,69 +66,51 @@ public class InferReportParser {
                 return;
             }
 
-            FilePredicates predicates = context.fileSystem().predicates();
-            FilePredicate fp = predicates.or(predicates.hasAbsolutePath(filePath), predicates.hasRelativePath(filePath));
-
-            InputFile inputFile = null;
-            if (!context.fileSystem().hasFiles(fp)) {
-                FileSystem fs = context.fileSystem();
-                //Search for path _ending_ with the filename
-                for (InputFile f : fs.inputFiles(fs.predicates().hasType(InputFile.Type.MAIN))) {
-                    if (filePath.endsWith(f.relativePath())) {
-                        inputFile = f;
-                        break;
-                    }
-                }
-            } else {
-                inputFile = context.fileSystem().inputFile(fp);
-            }
+            InputFile inputFile = findInputFile(filePath);
             if (inputFile == null) {
                 logger.warn("file not included in sonar {}", filePath);
                 return;
             }
 
             String info = (String) jsonObject.get("qualifier");
-            assert inputFile != null;
             try {
-                NewIssueLocation dil = new DefaultIssueLocation()
+                NewIssue issue = context.newIssue()
+                        .forRule(RuleKey.of(InferRulesDefinition.REPOSITORY_KEY, (String) jsonObject.get("bug_type")));
+                issue.at(issue.newLocation()
                         .on(inputFile)
                         .at(inputFile.selectLine(lineNum))
-                        .message(info);
-                context.newIssue()
-                        .forRule(RuleKey.of(InferRulesDefinition.REPOSITORY_KEY, (String) jsonObject.get("bug_type")))
-                        .addFlow(this.composeLocationList(filePath, bugTraceJsonArray))
-                        .at(dil)
-                        .save();
+                        .message(info));
+                issue.addFlow(this.composeLocationList(bugTraceJsonArray));
+                issue.save();
             } catch (IllegalArgumentException e) {
                 logger.error("infer error, jsonObject = {}", jsonObject, e);
             }
-
         }
     }
 
-    private List<NewIssueLocation> composeLocationList(String parentFilePath, JSONArray bugTraceJsonArray) {
+    private InputFile findInputFile(String filePath) {
+        FilePredicates predicates = context.fileSystem().predicates();
+        FilePredicate fp = predicates.or(predicates.hasAbsolutePath(filePath), predicates.hasRelativePath(filePath));
+
+        if (!context.fileSystem().hasFiles(fp)) {
+            FileSystem fs = context.fileSystem();
+            for (InputFile f : fs.inputFiles(fs.predicates().hasType(InputFile.Type.MAIN))) {
+                if (filePath.endsWith(f.relativePath())) {
+                    return f;
+                }
+            }
+            return null;
+        }
+        return context.fileSystem().inputFile(fp);
+    }
+
+    private List<NewIssueLocation> composeLocationList(JSONArray bugTraceJsonArray) {
         List<NewIssueLocation> locations = new ArrayList<>();
         for (int i = bugTraceJsonArray.size() - 1; i >= 0; i--) {
             JSONObject bugTraceObject = (JSONObject) bugTraceJsonArray.get(i);
             String filePath = (String) bugTraceObject.get("filename");
             if (filePath != null) {
-                File file = new File(filePath);
-                FilePredicates predicates = context.fileSystem().predicates();
-                FilePredicate fp = predicates.or(predicates.hasAbsolutePath(filePath), predicates.hasRelativePath(filePath));
-
-                InputFile inputFile = null;
-                if (!context.fileSystem().hasFiles(fp)) {
-                    FileSystem fs = context.fileSystem();
-                    //Search for path _ending_ with the filename
-                    for (InputFile f : fs.inputFiles(fs.predicates().hasType(InputFile.Type.MAIN))) {
-                        if (filePath.endsWith(f.relativePath())) {
-                            inputFile = f;
-                            break;
-                        }
-                    }
-                } else {
-                    inputFile = context.fileSystem().inputFile(fp);
-                }
+                InputFile inputFile = findInputFile(filePath);
                 if (inputFile == null) {
                     logger.warn("file not included in sonar {}", filePath);
                     continue;
@@ -154,9 +123,10 @@ public class InferReportParser {
                     logger.error("bug_trace to location line number == 0, {}", bugTraceObject);
                     continue;
                 }
-                assert inputFile != null;
                 try {
-                    NewIssueLocation newIssueLocation = new DefaultIssueLocation()
+                    NewIssue tempIssue = context.newIssue()
+                            .forRule(RuleKey.of(InferRulesDefinition.REPOSITORY_KEY, "PLACEHOLDER"));
+                    NewIssueLocation newIssueLocation = tempIssue.newLocation()
                             .on(inputFile)
                             .at(inputFile.selectLine(lineNum))
                             .message(description);
@@ -166,8 +136,6 @@ public class InferReportParser {
                 }
             }
         }
-
         return locations;
     }
-
 }

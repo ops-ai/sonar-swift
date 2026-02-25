@@ -17,8 +17,7 @@
  */
 package com.backelite.sonarqube.commons.surefire;
 
-import com.google.common.collect.Lists;
-
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,7 +33,7 @@ public final class UnitTestClassReport {
 
     private void initResults() {
         if (results == null) {
-            results = Lists.newArrayList();
+            results = new ArrayList<>();
         }
     }
 

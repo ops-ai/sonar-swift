@@ -1,108 +1,76 @@
-/**
- * Swift SonarQube Plugin - Swift module - Enables analysis of Swift and Objective-C projects into SonarQube.
- * Copyright © 2015 Backelite (${email})
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 package com.backelite.sonarqube.swift.lang;
 
-
-import com.backelite.sonarqube.swift.lang.api.SwiftGrammar;
-import com.backelite.sonarqube.swift.lang.api.SwiftMetric;
-import com.backelite.sonarqube.swift.lang.parser.SwiftParser;
-import com.sonar.sslr.impl.Parser;
-import org.sonar.squidbridge.AstScanner;
-import org.sonar.squidbridge.CommentAnalyser;
-import org.sonar.squidbridge.SquidAstVisitor;
-import org.sonar.squidbridge.SquidAstVisitorContextImpl;
-import org.sonar.squidbridge.api.SourceCode;
-import org.sonar.squidbridge.api.SourceFile;
-import org.sonar.squidbridge.api.SourceProject;
-import org.sonar.squidbridge.indexer.QueryByType;
-import org.sonar.squidbridge.metrics.CommentsVisitor;
-import org.sonar.squidbridge.metrics.LinesOfCodeVisitor;
-import org.sonar.squidbridge.metrics.LinesVisitor;
+import com.backelite.sonarqube.swift.lang.lexer.SwiftLexer;
+import com.sonar.sslr.api.Token;
+import com.sonar.sslr.api.Trivia;
+import com.sonar.sslr.impl.Lexer;
 
 import java.io.File;
-import java.util.Collection;
+import java.util.*;
 
 public class SwiftAstScanner {
 
     private SwiftAstScanner() {
-
     }
 
-    /**
-     * Helper method for testing checks without having to deploy them on a Sonar instance.
-     */
-    public static SourceFile scanSingleFile(File file, SquidAstVisitor<SwiftGrammar>... visitors) {
-        if (!file.isFile()) {
-            throw new IllegalArgumentException("File '" + file + "' not found.");
-        }
-        AstScanner<SwiftGrammar> scanner = create(new SwiftConfiguration(), visitors);
-        scanner.scanFile(file);
-        Collection<SourceCode> sources = scanner.getIndex().search(new QueryByType(SourceFile.class));
+    public static LineCounts scanFile(File file, SwiftConfiguration conf) {
+        Lexer lexer = SwiftLexer.create(conf);
+        List<Token> tokens = lexer.lex(file);
 
-        if (sources.size() != 1) {
-            throw new IllegalStateException("Only one SourceFile was expected whereas " + sources.size() + " has been returned.");
-        }
-        return (SourceFile) sources.iterator().next();
-    }
+        Set<Integer> linesOfCode = new HashSet<>();
+        Set<Integer> commentLines = new HashSet<>();
+        int maxLine = 0;
 
-    public static AstScanner<SwiftGrammar> create(SwiftConfiguration conf, SquidAstVisitor<SwiftGrammar>... visitors) {
-        final SquidAstVisitorContextImpl<SwiftGrammar> context = new SquidAstVisitorContextImpl<SwiftGrammar>(new SourceProject("Objective-C Project"));
-        final Parser<SwiftGrammar> parser = SwiftParser.create(conf);
-
-        AstScanner.Builder<SwiftGrammar> builder = AstScanner.builder(context).setBaseParser(parser);
-
-        /* Metrics */
-        builder.withMetrics(SwiftMetric.values());
-
-        /* Comments */
-        builder.setCommentAnalyser(
-                new CommentAnalyser() {
-                    @Override
-                    public boolean isBlank(String line) {
-                        for (int i = 0; i < line.length(); i++) {
-                            if (Character.isLetterOrDigit(line.charAt(i))) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }
-
-                    @Override
-                    public String getContents(String comment) {
-                        return comment.startsWith("//") ? comment.substring(2) : comment.substring(2, comment.length() - 2);
-                    }
-                });
-
-        /* Files */
-        builder.setFilesMetric(SwiftMetric.FILES);
-        if(visitors != null && visitors.length > 0) {
-            for (SquidAstVisitor<SwiftGrammar> sv : visitors) {
-                builder.withSquidAstVisitor(sv);
+        for (Token token : tokens) {
+            if (token.getType().equals(com.sonar.sslr.api.GenericTokenType.EOF)) {
+                if (token.getLine() > maxLine) {
+                    maxLine = token.getLine();
+                }
+                continue;
             }
-        } else {
-            /* Metrics */
-            builder.withSquidAstVisitor(new LinesVisitor(SwiftMetric.LINES));
-            builder.withSquidAstVisitor(new LinesOfCodeVisitor(SwiftMetric.LINES_OF_CODE));
-            builder.withSquidAstVisitor(CommentsVisitor.<SwiftGrammar>builder().withCommentMetric(SwiftMetric.COMMENT_LINES)
-                .withNoSonar(true)
-                .withIgnoreHeaderComment(conf.getIgnoreHeaderComments())
-                .build());
+
+            linesOfCode.add(token.getLine());
+            String[] tokenLines = token.getOriginalValue().split("\r\n|\n|\r", -1);
+            for (int i = 1; i < tokenLines.length; i++) {
+                linesOfCode.add(token.getLine() + i);
+            }
+            int lastTokenLine = token.getLine() + tokenLines.length - 1;
+            if (lastTokenLine > maxLine) {
+                maxLine = lastTokenLine;
+            }
+
+            for (Trivia trivia : token.getTrivia()) {
+                Token triviaToken = trivia.getToken();
+                if (trivia.isComment()) {
+                    commentLines.add(triviaToken.getLine());
+                    String[] triviaLines = triviaToken.getOriginalValue().split("\r\n|\n|\r", -1);
+                    for (int i = 1; i < triviaLines.length; i++) {
+                        commentLines.add(triviaToken.getLine() + i);
+                    }
+                    int lastTriviaLine = triviaToken.getLine() + triviaLines.length - 1;
+                    if (lastTriviaLine > maxLine) {
+                        maxLine = lastTriviaLine;
+                    }
+                }
+            }
         }
-        return builder.build();
+
+        return new LineCounts(maxLine, linesOfCode.size(), commentLines.size());
+    }
+
+    public static class LineCounts {
+        private final int lines;
+        private final int linesOfCode;
+        private final int commentLines;
+
+        public LineCounts(int lines, int linesOfCode, int commentLines) {
+            this.lines = lines;
+            this.linesOfCode = linesOfCode;
+            this.commentLines = commentLines;
+        }
+
+        public int getLines() { return lines; }
+        public int getLinesOfCode() { return linesOfCode; }
+        public int getCommentLines() { return commentLines; }
     }
 }

@@ -1,64 +1,77 @@
-/**
- * Swift SonarQube Plugin - Swift module - Enables analysis of Swift and Objective-C projects into SonarQube.
- * Copyright © 2015 Backelite (${email})
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
 package com.backelite.sonarqube.swift.issues;
 
 import com.backelite.sonarqube.swift.issues.swiftlint.SwiftLintProfile;
-import com.backelite.sonarqube.swift.issues.swiftlint.SwiftLintProfileImporter;
-import com.backelite.sonarqube.swift.issues.tailor.TailorProfileImporter;
 import com.backelite.sonarqube.swift.lang.core.Swift;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.api.profiles.RulesProfile;
-import org.sonar.api.rules.ActiveRule;
 import org.sonar.api.server.profile.BuiltInQualityProfilesDefinition;
-import org.sonar.api.utils.ValidationMessages;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import java.io.InputStream;
 
 public class SwiftProfile implements BuiltInQualityProfilesDefinition {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SwiftProfile.class);
 
-    private final SwiftLintProfileImporter swiftLintProfileImporter;
-    private final TailorProfileImporter tailorProfileImporter;
-
-    public SwiftProfile(final SwiftLintProfileImporter swiftLintProfileImporter, final TailorProfileImporter tailorProfileImporter) {
-        this.swiftLintProfileImporter = swiftLintProfileImporter;
-        this.tailorProfileImporter = tailorProfileImporter;
-    }
-
     @Override
-    public void define(BuiltInQualityProfilesDefinition.Context context) {
+    public void define(Context context) {
         LOGGER.info("Creating Swift Profile");
 
-        BuiltInQualityProfilesDefinition.NewBuiltInQualityProfile nbiqp = context.createBuiltInQualityProfile("Swift", Swift.KEY);
-        nbiqp.setDefault(true);
+        NewBuiltInQualityProfile profile = context.createBuiltInQualityProfile("Swift", Swift.KEY);
+        profile.setDefault(true);
 
-        try (Reader config = new InputStreamReader(getClass().getResourceAsStream(SwiftLintProfile.PROFILE_PATH))) {
-            RulesProfile ocLintRulesProfile = swiftLintProfileImporter.importProfile(config, ValidationMessages.create());
-            for (ActiveRule rule : ocLintRulesProfile.getActiveRules()) {
-                nbiqp.activateRule(rule.getRepositoryKey(), rule.getRuleKey());
+        loadRulesFromXml(profile, SwiftLintProfile.PROFILE_PATH);
+
+        profile.done();
+    }
+
+    public static void loadRulesFromXml(NewBuiltInQualityProfile profile, String resourcePath) {
+        try (InputStream is = SwiftProfile.class.getResourceAsStream(resourcePath)) {
+            if (is == null) {
+                LOGGER.warn("Profile resource not found: {}", resourcePath);
+                return;
             }
-        } catch (IOException ex) {
-            LOGGER.error("Error Creating Swift Profile", ex);
+            XMLInputFactory factory = XMLInputFactory.newInstance();
+            factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
+            factory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
+            XMLStreamReader reader = factory.createXMLStreamReader(is);
+
+            String repositoryKey = null;
+            String ruleKey = null;
+            String currentElement = null;
+
+            while (reader.hasNext()) {
+                int event = reader.next();
+                switch (event) {
+                    case XMLStreamConstants.START_ELEMENT:
+                        currentElement = reader.getLocalName();
+                        break;
+                    case XMLStreamConstants.CHARACTERS:
+                        String text = reader.getText().trim();
+                        if (!text.isEmpty()) {
+                            if ("repositoryKey".equals(currentElement)) {
+                                repositoryKey = text;
+                            } else if ("key".equals(currentElement)) {
+                                ruleKey = text;
+                            }
+                        }
+                        break;
+                    case XMLStreamConstants.END_ELEMENT:
+                        if ("rule".equals(reader.getLocalName()) && repositoryKey != null && ruleKey != null) {
+                            profile.activateRule(repositoryKey, ruleKey);
+                            repositoryKey = null;
+                            ruleKey = null;
+                        }
+                        currentElement = null;
+                        break;
+                }
+            }
+            reader.close();
+        } catch (XMLStreamException | java.io.IOException e) {
+            LOGGER.error("Error loading profile from {}", resourcePath, e);
         }
-        nbiqp.done();
     }
 }

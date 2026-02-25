@@ -17,44 +17,35 @@
  */
 package com.backelite.sonarqube.commons.surefire;
 
-import org.codehaus.staxmate.SMInputFactory;
-import com.ctc.wstx.stax.WstxInputFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
-import org.codehaus.staxmate.in.SMHierarchicCursor;
+import javax.xml.stream.XMLStreamReader;
 
 public class StaxParser {
 
-    private SMInputFactory inf;
-    private SurefireStaxHandler streamHandler;
+    private final XMLInputFactory xmlInputFactory;
+    private final SurefireStaxHandler streamHandler;
 
     public StaxParser(UnitTestIndex index) {
         this.streamHandler = new SurefireStaxHandler(index);
-        XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-        if (xmlInputFactory instanceof WstxInputFactory) {
-            WstxInputFactory wstxInputfactory = (WstxInputFactory) xmlInputFactory;
-            wstxInputfactory.configureForLowMemUsage();
-            wstxInputfactory.getConfig().setUndeclaredEntityResolver((String publicID, String systemID, String baseURI, String namespace) -> namespace);
-        }
-        this.inf = new SMInputFactory(xmlInputFactory);
+        this.xmlInputFactory = XMLInputFactory.newInstance();
+        xmlInputFactory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
+        xmlInputFactory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
     }
 
     public void parse(File xmlFile) throws XMLStreamException {
-        try(FileInputStream input = new FileInputStream(xmlFile)) {
-            parse(inf.rootElementCursor(input));
+        try (FileInputStream input = new FileInputStream(xmlFile)) {
+            XMLStreamReader reader = xmlInputFactory.createXMLStreamReader(input);
+            try {
+                streamHandler.stream(reader);
+            } finally {
+                reader.close();
+            }
         } catch (IOException e) {
             throw new XMLStreamException(e);
-        }
-    }
-
-    private void parse(SMHierarchicCursor rootCursor) throws XMLStreamException {
-        try {
-            streamHandler.stream(rootCursor);
-        } finally {
-            rootCursor.getStreamReader().closeCompletely();
         }
     }
 }

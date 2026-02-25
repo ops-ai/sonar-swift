@@ -24,8 +24,7 @@ import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.sensor.SensorContext;
-import org.sonar.api.batch.sensor.issue.NewIssueLocation;
-import org.sonar.api.batch.sensor.issue.internal.DefaultIssueLocation;
+import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.rule.RuleKey;
 
 import java.io.*;
@@ -33,10 +32,6 @@ import java.nio.file.Files;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
-/**
- * Created by tzwickl on 22/11/2016.
- */
 
 public class TailorReportParser {
 
@@ -50,10 +45,9 @@ public class TailorReportParser {
 
     public void parseReport(final File reportFile) {
         try (Stream<String> lines = Files.lines(reportFile.toPath())) {
-            // Read and parse report
             lines.forEach(this::recordIssue);
         } catch (IOException e) {
-            LOGGER.error("Failed to parse SwiftLint report file", e);
+            LOGGER.error("Failed to parse Tailor report file", e);
         }
     }
 
@@ -74,7 +68,6 @@ public class TailorReportParser {
             InputFile inputFile = null;
             if (!context.fileSystem().hasFiles(fp)) {
                 FileSystem fs = context.fileSystem();
-                //Search for path _ending_ with the filename
                 for (InputFile f : fs.inputFiles(fs.predicates().hasType(InputFile.Type.MAIN))) {
                     if (filePath.endsWith(f.relativePath())) {
                         inputFile = f;
@@ -89,14 +82,13 @@ public class TailorReportParser {
                 continue;
             }
 
-            NewIssueLocation dil = new DefaultIssueLocation()
+            NewIssue issue = context.newIssue()
+                .forRule(RuleKey.of(TailorRulesDefinition.REPOSITORY_KEY, ruleId));
+            issue.at(issue.newLocation()
                 .on(inputFile)
                 .at(inputFile.selectLine(lineNum))
-                .message(message);
-            context.newIssue()
-                .forRule(RuleKey.of(TailorRulesDefinition.REPOSITORY_KEY, ruleId))
-                .at(dil)
-                .save();
+                .message(message));
+            issue.save();
         }
     }
 }

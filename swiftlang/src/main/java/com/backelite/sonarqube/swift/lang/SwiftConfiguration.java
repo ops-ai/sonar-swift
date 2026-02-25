@@ -17,19 +17,24 @@
  */
 package com.backelite.sonarqube.swift.lang;
 
-import org.sonar.squidbridge.api.SquidConfiguration;
-
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
-public class SwiftConfiguration extends SquidConfiguration {
+public class SwiftConfiguration {
 
+    private final Charset charset;
     private boolean ignoreHeaderComments;
 
     public SwiftConfiguration() {
+        this(StandardCharsets.UTF_8);
     }
 
     public SwiftConfiguration(Charset charset) {
-        super(charset);
+        this.charset = charset;
+    }
+
+    public Charset getCharset() {
+        return charset;
     }
 
     public boolean getIgnoreHeaderComments() {

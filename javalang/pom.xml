@@ -5,16 +5,14 @@
     <parent>
         <artifactId>sonar-swift</artifactId>
         <groupId>com.github.sonar-next</groupId>
-        <version>1.8.0</version>
+        <version>2.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>java-lang</artifactId>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-        <junit.jupiter.version>5.8.2</junit.jupiter.version>
+        <junit.jupiter.version>5.10.1</junit.jupiter.version>
     </properties>
 
 
@@ -23,28 +21,12 @@
         <dependency>
             <groupId>com.github.sonar-next</groupId>
             <artifactId>commons</artifactId>
-            <version>1.8.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.sonarsource.analyzer-commons</groupId>
-            <artifactId>sonar-analyzer-commons</artifactId>
-            <version>1.7.0.243</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.sonarsource.java</groupId>
-            <artifactId>external-reports</artifactId>
-            <version>5.6.1.15064</version>
+            <version>2.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.sonarsource.sslr</groupId>
             <artifactId>sslr-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sslr-squid-bridge</groupId>
-            <artifactId>sslr-squid-bridge</artifactId>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -62,29 +44,16 @@
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>
         </dependency>
+
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
         </dependency>
+
+        <!-- Provided dependencies -->
         <dependency>
-            <groupId>org.sonarsource.sonarqube</groupId>
-            <artifactId>sonar-testing-harness</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sslr</groupId>
-            <artifactId>sslr-testing-harness</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sonarlint.core</groupId>
-            <artifactId>sonarlint-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.orchestrator</groupId>
-            <artifactId>sonar-orchestrator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sonarqube</groupId>
+            <groupId>org.sonarsource.api.plugin</groupId>
             <artifactId>sonar-plugin-api</artifactId>
         </dependency>
         <dependency>
@@ -94,13 +63,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.11.2</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.codehaus.woodstox</groupId>
-                    <artifactId>wstx-asl</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>2.16.1</version>
         </dependency>
 
         <dependency>
@@ -114,6 +77,12 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
 

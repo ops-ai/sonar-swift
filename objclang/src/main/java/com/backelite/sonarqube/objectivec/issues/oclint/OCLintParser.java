@@ -24,8 +24,7 @@ import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.sensor.SensorContext;
-import org.sonar.api.batch.sensor.issue.NewIssueLocation;
-import org.sonar.api.batch.sensor.issue.internal.DefaultIssueLocation;
+import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.rule.RuleKey;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -61,7 +60,7 @@ final class OCLintParser {
             Document document = builder.parse(xmlFile);
             parseFiles(document.getElementsByTagName(FILE));
         } catch (final FileNotFoundException e) {
-            LOGGER.error("Cobertura Report not found {}", xmlFile, e);
+            LOGGER.error("OCLint Report not found {}", xmlFile, e);
         } catch (final IOException e) {
             LOGGER.error("Error processing file named {}", xmlFile, e);
         } catch (final ParserConfigurationException e) {
@@ -69,7 +68,6 @@ final class OCLintParser {
         } catch (final SAXException e) {
             LOGGER.error("Error processing file named {}", xmlFile, e);
         }
-
     }
 
     private void parseFiles(NodeList nodeList) {
@@ -77,10 +75,9 @@ final class OCLintParser {
             Node node = nodeList.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {
                 Element element = (Element) node;
-
                 String filePath = element.getAttribute(FILENAME);
                 NodeList nl = element.getElementsByTagName(VIOLATION);
-                collectFileViolations(filePath,nl);
+                collectFileViolations(filePath, nl);
             }
         }
     }
@@ -93,7 +90,6 @@ final class OCLintParser {
         InputFile inputFile = null;
         if (!context.fileSystem().hasFiles(fp)) {
             FileSystem fs = context.fileSystem();
-            //Search for path _ending_ with the filename
             for (InputFile f : fs.inputFiles(fs.predicates().hasType(InputFile.Type.MAIN))) {
                 if (filePath.endsWith(f.relativePath())) {
                     inputFile = f;
@@ -111,14 +107,13 @@ final class OCLintParser {
             Node node = nodeList.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {
                 Element element = (Element) node;
-                NewIssueLocation dil = new DefaultIssueLocation()
+                NewIssue issue = context.newIssue()
+                        .forRule(RuleKey.of(OCLintRulesDefinition.REPOSITORY_KEY, element.getAttribute(RULE)));
+                issue.at(issue.newLocation()
                         .on(inputFile)
                         .at(inputFile.selectLine(Integer.valueOf(element.getAttribute(LINE))))
-                        .message(element.getTextContent());
-                context.newIssue()
-                        .forRule(RuleKey.of(OCLintRulesDefinition.REPOSITORY_KEY, element.getAttribute(RULE)))
-                        .at(dil)
-                        .save();
+                        .message(element.getTextContent()));
+                issue.save();
             }
         }
     }

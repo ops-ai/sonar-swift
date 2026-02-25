@@ -19,16 +19,16 @@
  */
 package com.backelite.sonarqube.objectivec.issues.antlr;
 
-import org.apache.commons.io.IOUtils;
-
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 
 public class AntlrUtils {
 
     public static AntlrContext getRequest(String text) throws IOException {
-        return AntlrContext.fromStreams(null, IOUtils.toInputStream(text, Charset.defaultCharset()),
-                IOUtils.toInputStream(text, Charset.defaultCharset()), Charset.defaultCharset());
+        byte[] bytes = text.getBytes(Charset.defaultCharset());
+        return AntlrContext.fromStreams(null, new ByteArrayInputStream(bytes),
+                new ByteArrayInputStream(bytes), Charset.defaultCharset());
 
     }
 

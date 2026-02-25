@@ -26,8 +26,7 @@ import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.sensor.SensorContext;
-import org.sonar.api.batch.sensor.issue.NewIssueLocation;
-import org.sonar.api.batch.sensor.issue.internal.DefaultIssueLocation;
+import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.rule.RuleKey;
 
 import java.io.File;
@@ -45,21 +44,15 @@ public class FauxPasReportParser {
     }
 
     public void parseReport(File reportFile) {
-
-        try(FileReader fr = new FileReader(reportFile)){
-            // Read and parse report
+        try (FileReader fr = new FileReader(reportFile)) {
             Object reportObj = JSONValue.parse(fr);
-
-            // Record issues
             if (reportObj != null) {
                 JSONObject reportJson = (JSONObject) reportObj;
                 JSONArray diagnosticsJson = (JSONArray) reportJson.get("diagnostics");
-
                 for (Object obj : diagnosticsJson) {
                     recordIssue((JSONObject) obj);
                 }
             }
-
         } catch (FileNotFoundException e) {
             LOGGER.error("Failed to parse FauxPas report file", e);
         } catch (IOException e) {
@@ -71,8 +64,7 @@ public class FauxPasReportParser {
         String filePath = (String) diagnosticJson.get("file");
         if (filePath != null) {
             FilePredicates predicates = context.fileSystem().predicates();
-            FilePredicate fp = predicates.or(predicates.hasAbsolutePath(filePath), predicates.hasRelativePath(filePath) );
-
+            FilePredicate fp = predicates.or(predicates.hasAbsolutePath(filePath), predicates.hasRelativePath(filePath));
 
             if (!context.fileSystem().hasFiles(fp)) {
                 LOGGER.warn("file not included in sonar {}", filePath);
@@ -87,22 +79,19 @@ public class FauxPasReportParser {
                 info = (String) diagnosticJson.get("ruleName");
             }
 
-            // Prevent line num 0 case
             int lineNum = Integer.parseInt(start.get("line").toString());
             if (lineNum == 0) {
                 lineNum++;
             }
 
             InputFile inputFile = context.fileSystem().inputFile(fp);
-            NewIssueLocation dil = new DefaultIssueLocation()
+            NewIssue issue = context.newIssue()
+                    .forRule(RuleKey.of(FauxPasRulesDefinition.REPOSITORY_KEY, (String) diagnosticJson.get("ruleShortName")));
+            issue.at(issue.newLocation()
                     .on(inputFile)
                     .at(inputFile.selectLine(lineNum))
-                    .message(info);
-            context.newIssue()
-                    .forRule(RuleKey.of(FauxPasRulesDefinition.REPOSITORY_KEY, (String) diagnosticJson.get("ruleShortName")))
-                    .at(dil)
-                    .save();
+                    .message(info));
+            issue.save();
         }
     }
-
 }

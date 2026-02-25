@@ -19,13 +19,13 @@
  */
 package com.backelite.sonarqube.objectivec.issues.antlr;
 
-import org.apache.commons.io.input.BOMInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PushbackInputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ public class SourceLinesProvider {
         final List<SourceLine> sourceLines = new ArrayList<>();
 
         try (final BufferedReader bufferedReader = new BufferedReader(
-                new InputStreamReader(new BOMInputStream(inputStream, false), charset))) {
+                new InputStreamReader(skipBOM(inputStream), charset))) {
             int totalLines = 1;
             int global = 0;
             int count = 0;
@@ -63,6 +63,19 @@ public class SourceLinesProvider {
         }
 
         return sourceLines.toArray(new SourceLine[0]);
+    }
+
+    private static InputStream skipBOM(InputStream inputStream) throws java.io.IOException {
+        PushbackInputStream pushback = new PushbackInputStream(inputStream, 3);
+        byte[] bom = new byte[3];
+        int read = pushback.read(bom, 0, 3);
+        if (read >= 3 && bom[0] == (byte) 0xEF && bom[1] == (byte) 0xBB && bom[2] == (byte) 0xBF) {
+            return pushback;
+        }
+        if (read > 0) {
+            pushback.unread(bom, 0, read);
+        }
+        return pushback;
     }
 
 }

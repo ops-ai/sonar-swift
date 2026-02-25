@@ -1,14 +1,14 @@
 package com.backelite.sonarqube.commons;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.filefilter.IOFileFilter;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.sonar.api.utils.WildcardPattern;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class DirectoryScanner {
 
@@ -21,22 +21,20 @@ public class DirectoryScanner {
     }
 
     public List<File> getIncludedFiles() {
-        final String baseDirAbsolutePath = baseDir.getAbsolutePath();
-        IOFileFilter fileFilter = new IOFileFilter() {
-
-            @Override
-            public boolean accept(File dir, String name) {
-                return accept(new File(dir, name));
-            }
-
-            @Override
-            public boolean accept(File file) {
-                String path = file.getAbsolutePath();
-                path = path.substring(Math.min(baseDirAbsolutePath.length(), path.length()));
-                return pattern.match(FilenameUtils.separatorsToUnix(path));
-            }
-        };
-        return new ArrayList<>(FileUtils.listFiles(baseDir, fileFilter, TrueFileFilter.INSTANCE));
+        List<File> result = new ArrayList<>();
+        Path basePath = baseDir.toPath();
+        try (Stream<Path> stream = Files.walk(basePath)) {
+            stream.filter(Files::isRegularFile)
+                .forEach(path -> {
+                    String relativePath = basePath.relativize(path).toString().replace('\\', '/');
+                    if (pattern.match(relativePath)) {
+                        result.add(path.toFile());
+                    }
+                });
+        } catch (IOException e) {
+            // Return empty list if directory cannot be walked
+        }
+        return result;
     }
 
 }

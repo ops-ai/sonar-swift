@@ -26,11 +26,11 @@
     <parent>
         <groupId>com.github.sonar-next</groupId>
         <artifactId>sonar-swift</artifactId>
-        <version>1.8.0</version>
+        <version>2.0.0</version>
     </parent>
 
     <artifactId>sonar-swift-plugin</artifactId>
-    <version>1.8.0</version>
+    <version>2.0.0</version>
 
     <packaging>sonar-plugin</packaging>
 
@@ -39,27 +39,23 @@
         <dependency>
             <groupId>com.github.sonar-next</groupId>
             <artifactId>java-lang</artifactId>
-            <version>1.8.0</version>
+            <version>2.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.github.sonar-next</groupId>
             <artifactId>swift-lang</artifactId>
-            <version>1.8.0</version>
+            <version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.github.sonar-next</groupId>
             <artifactId>objc-lang</artifactId>
-            <version>1.8.0</version>
+            <version>2.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.sonarsource.sslr</groupId>
             <artifactId>sslr-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sslr-squid-bridge</groupId>
-            <artifactId>sslr-squid-bridge</artifactId>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -70,43 +66,26 @@
             <artifactId>ant</artifactId>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sonarqube</groupId>
-            <artifactId>sonar-testing-harness</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sslr</groupId>
-            <artifactId>sslr-testing-harness</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sonarlint.core</groupId>
-            <artifactId>sonarlint-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.orchestrator</groupId>
-            <artifactId>sonar-orchestrator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.sonarsource.sonarqube</groupId>
+            <groupId>org.sonarsource.api.plugin</groupId>
             <artifactId>sonar-plugin-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
         </dependency>
 
     </dependencies>
@@ -118,7 +97,7 @@
             <plugin>
                 <groupId>org.sonarsource.sonar-packaging-maven-plugin</groupId>
                 <artifactId>sonar-packaging-maven-plugin</artifactId>
-                <version>1.16</version>
+                <version>1.23.0.740</version>
                 <extensions>true</extensions>
                 <configuration>
                     <pluginClass>com.backelite.sonarqube.swift.SwiftPlugin</pluginClass>

@@ -24,8 +24,7 @@ import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.batch.sensor.SensorContext;
-import org.sonar.api.batch.sensor.issue.NewIssueLocation;
-import org.sonar.api.batch.sensor.issue.internal.DefaultIssueLocation;
+import org.sonar.api.batch.sensor.issue.NewIssue;
 import org.sonar.api.rule.RuleKey;
 
 import java.io.*;
@@ -47,7 +46,6 @@ public class SwiftLintReportParser {
 
     public void parseReport(File reportFile) {
         try (Stream<String> lines = Files.lines(reportFile.toPath())) {
-            // Read and parse report
             lines.forEach(this::recordIssue);
         } catch (IOException e) {
             LOGGER.error("Failed to parse SwiftLint report file", e);
@@ -70,7 +68,6 @@ public class SwiftLintReportParser {
             InputFile inputFile = null;
             if (!context.fileSystem().hasFiles(fp)) {
                 FileSystem fs = context.fileSystem();
-                //Search for path _ending_ with the filename
                 for (InputFile f : fs.inputFiles(fs.predicates().hasType(InputFile.Type.MAIN))) {
                     if (filePath.endsWith(f.relativePath())) {
                         inputFile = f;
@@ -84,14 +81,13 @@ public class SwiftLintReportParser {
                 LOGGER.warn("file not included in sonar {}", filePath);
                 continue;
             }
-            NewIssueLocation dil = new DefaultIssueLocation()
+            NewIssue issue = context.newIssue()
+                    .forRule(RuleKey.of(SwiftLintRulesDefinition.REPOSITORY_KEY, ruleId));
+            issue.at(issue.newLocation()
                     .on(inputFile)
                     .at(inputFile.selectLine(lineNum))
-                    .message(message);
-            context.newIssue()
-                    .forRule(RuleKey.of(SwiftLintRulesDefinition.REPOSITORY_KEY, ruleId))
-                    .at(dil)
-                    .save();
+                    .message(message));
+            issue.save();
         }
     }
 }

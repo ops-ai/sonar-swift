@@ -21,9 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FilePredicates;
-import org.sonar.api.batch.fs.InputComponent;
 import org.sonar.api.batch.fs.InputFile;
-import org.sonar.api.batch.fs.internal.DefaultInputComponent;
 import org.sonar.api.batch.sensor.SensorContext;
 import org.sonar.api.measures.CoreMetrics;
 import org.w3c.dom.Document;
@@ -46,7 +44,7 @@ public class LizardReportParser {
     private static final String MEASURE_LABELS = "label";
     private static final String MEASURE_ITEM = "item";
     private static final String FILE_MEASURE = "file";
-    private static final String FUNCTION_MEASURE = "function";
+
     private static final String NAME = "name";
     private static final String VALUE = "value";
     private static final String LINE_COUNT_LABEL = "NCSS";
@@ -121,8 +119,6 @@ public class LizardReportParser {
                     if (inputFile != null) {
                         addComplexityFileMeasures(inputFile, values);
                     }
-                } else if (FUNCTION_MEASURE.equalsIgnoreCase(type)) {
-                    addComplexityFunctionMeasures(new SwiftFunction(0,name), values);
                 }
             }
         }
@@ -137,41 +133,6 @@ public class LizardReportParser {
             return null;
         }
         return context.fileSystem().inputFile(fp);
-    }
-
-    static class SwiftFunction extends DefaultInputComponent implements InputComponent {
-        private String name;
-        private String key;
-        private String file;
-        private int lineNumber;
-        SwiftFunction(int scannerId, String name) {
-            super(scannerId);
-            String[] vals = name.split(" at ");
-            if (vals.length >= 2) {
-                this.name = vals[0].replaceAll("\\W","");
-
-                if (vals[1].contains(":")) {
-                    String[] sp = vals[1].split(":");
-                    this.file = sp[0].substring(0,sp[0].lastIndexOf("."));
-                    this.lineNumber = Integer.parseInt(sp[1]);
-                } else {
-                    this.file = vals[1];
-                    this.lineNumber = 0;
-                }
-
-                this.key = String.format("%s.%s:%d", this.file, this.name, this.lineNumber);
-            } else {
-                this.key = name;
-            }
-        }
-        @Override
-        public String key() {
-            return key;
-        }
-        @Override
-        public boolean isFile() {
-            return false;
-        }
     }
 
     private void addComplexityFileMeasures(InputFile component, NodeList values) {
@@ -199,20 +160,4 @@ public class LizardReportParser {
             .save();
     }
 
-    private void addComplexityFunctionMeasures(InputComponent component, NodeList values) {
-        LOGGER.debug("Function measures for {}",component.key());
-        int complexity = Integer.parseInt(values.item(cyclomaticComplexityIndex).getTextContent());
-        context.<Integer>newMeasure()
-            .on(component)
-            .forMetric(CoreMetrics.COMPLEXITY)
-            .withValue(complexity)
-            .save();
-
-        int numberOfLines = Integer.parseInt(values.item(lineCountIndex).getTextContent());
-        context.<Integer>newMeasure()
-            .on(component)
-            .forMetric(CoreMetrics.LINES)
-            .withValue(numberOfLines)
-            .save();
-    }
 }

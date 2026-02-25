@@ -17,15 +17,14 @@
  */
 package com.backelite.sonarqube.commons.surefire;
 
+import org.apache.commons.lang.StringUtils;
+
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Locale;
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
-import org.apache.commons.lang.StringUtils;
-import org.codehaus.staxmate.in.ElementFilter;
-import org.codehaus.staxmate.in.SMEvent;
-import org.codehaus.staxmate.in.SMHierarchicCursor;
-import org.codehaus.staxmate.in.SMInputCursor;
-import org.sonar.api.utils.ParsingUtils;
+import javax.xml.stream.XMLStreamReader;
 
 public class SurefireStaxHandler {
 
@@ -35,33 +34,81 @@ public class SurefireStaxHandler {
         this.index = index;
     }
 
-    public void stream(SMHierarchicCursor rootCursor) throws XMLStreamException {
-        SMInputCursor testSuite = rootCursor.constructDescendantCursor(new ElementFilter("testsuite"));
-        SMEvent testSuiteEvent;
-        for (testSuiteEvent = testSuite.getNext(); testSuiteEvent != null; testSuiteEvent = testSuite.getNext()) {
-            if (testSuiteEvent.compareTo(SMEvent.START_ELEMENT) == 0) {
-                String testSuiteClassName = testSuite.getAttrValue("name");
+    public void stream(XMLStreamReader reader) throws XMLStreamException {
+        while (reader.hasNext()) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT && "testsuite".equals(reader.getLocalName())) {
+                String testSuiteClassName = reader.getAttributeValue(null, "name");
                 if (StringUtils.contains(testSuiteClassName, "$")) {
-                    // test suites for inner classes are ignored
-                    return;
+                    skipElement(reader);
+                    continue;
                 }
-                parseTestCase(testSuiteClassName, testSuite.childCursor(new ElementFilter("testcase")));
+                parseTestSuite(reader, testSuiteClassName);
             }
         }
     }
 
-    private void parseTestCase(String testSuiteClassName, SMInputCursor testCase) throws XMLStreamException {
-        for (SMEvent event = testCase.getNext(); event != null; event = testCase.getNext()) {
-            if (event.compareTo(SMEvent.START_ELEMENT) == 0) {
-                String testClassName = getClassname(testCase, testSuiteClassName);
-                UnitTestClassReport classReport = index.index(testClassName);
-                parseTestCase(testCase, testSuiteClassName, classReport);
+    private void parseTestSuite(XMLStreamReader reader, String testSuiteClassName) throws XMLStreamException {
+        while (reader.hasNext()) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                if ("testcase".equals(reader.getLocalName())) {
+                    parseTestCase(reader, testSuiteClassName);
+                } else {
+                    skipElement(reader);
+                }
+            } else if (event == XMLStreamConstants.END_ELEMENT && "testsuite".equals(reader.getLocalName())) {
+                return;
             }
         }
     }
 
-    private static String getClassname(SMInputCursor testCaseCursor, String defaultClassname) throws XMLStreamException {
-        String testClassName = testCaseCursor.getAttrValue("classname");
+    private void parseTestCase(XMLStreamReader reader, String testSuiteClassName) throws XMLStreamException {
+        String testClassName = getClassname(reader, testSuiteClassName);
+        UnitTestClassReport classReport = index.index(testClassName);
+
+        UnitTestResult detail = new UnitTestResult();
+        detail.setName(getTestCaseName(reader));
+        detail.setTestSuiteClassName(testSuiteClassName);
+
+        String status = UnitTestResult.STATUS_OK;
+        String time = reader.getAttributeValue(null, "time");
+        Long duration = null;
+
+        while (reader.hasNext()) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                String elementName = reader.getLocalName();
+                if ("skipped".equals(elementName)) {
+                    status = UnitTestResult.STATUS_SKIPPED;
+                    duration = 0L;
+                    skipElement(reader);
+                } else if ("failure".equals(elementName)) {
+                    status = UnitTestResult.STATUS_FAILURE;
+                    detail.setMessage(reader.getAttributeValue(null, "message"));
+                    detail.setStackTrace(reader.getElementText());
+                } else if ("error".equals(elementName)) {
+                    status = UnitTestResult.STATUS_ERROR;
+                    detail.setMessage(reader.getAttributeValue(null, "message"));
+                    detail.setStackTrace(reader.getElementText());
+                } else {
+                    skipElement(reader);
+                }
+            } else if (event == XMLStreamConstants.END_ELEMENT && "testcase".equals(reader.getLocalName())) {
+                break;
+            }
+        }
+
+        if (duration == null) {
+            duration = getTimeAttributeInMS(time);
+        }
+        detail.setDurationMilliseconds(duration);
+        detail.setStatus(status);
+        classReport.add(detail);
+    }
+
+    private static String getClassname(XMLStreamReader reader, String defaultClassname) {
+        String testClassName = reader.getAttributeValue(null, "classname");
         if (StringUtils.isNotBlank(testClassName) && testClassName.endsWith(")")) {
             int openParenthesisIndex = testClassName.indexOf('(');
             if (openParenthesisIndex > 0) {
@@ -71,71 +118,37 @@ public class SurefireStaxHandler {
         return StringUtils.defaultIfBlank(testClassName, defaultClassname);
     }
 
-    private static void parseTestCase(SMInputCursor testCaseCursor, String testSuiteClassName, UnitTestClassReport report) throws XMLStreamException {
-        report.add(parseTestResult(testCaseCursor, testSuiteClassName));
-    }
-
-    private static void setStackAndMessage(UnitTestResult result, SMInputCursor stackAndMessageCursor) throws XMLStreamException {
-        result.setMessage(stackAndMessageCursor.getAttrValue("message"));
-        String stack = stackAndMessageCursor.collectDescendantText();
-        result.setStackTrace(stack);
-    }
-
-    private static UnitTestResult parseTestResult(SMInputCursor testCaseCursor, String testSuiteClassName) throws XMLStreamException {
-        UnitTestResult detail = new UnitTestResult();
-        String name = getTestCaseName(testCaseCursor);
-        detail.setName(name);
-        detail.setTestSuiteClassName(testSuiteClassName);
-
-        String status = UnitTestResult.STATUS_OK;
-        String time = testCaseCursor.getAttrValue("time");
-        Long duration = null;
-
-        SMInputCursor childNode = testCaseCursor.descendantElementCursor();
-        if (childNode.getNext() != null) {
-            String elementName = childNode.getLocalName();
-            if ("skipped".equals(elementName)) {
-                status = UnitTestResult.STATUS_SKIPPED;
-                // bug with surefire reporting wrong time for skipped tests
-                duration = 0L;
-
-            } else if ("failure".equals(elementName)) {
-                status = UnitTestResult.STATUS_FAILURE;
-                setStackAndMessage(detail, childNode);
-
-            } else if ("error".equals(elementName)) {
-                status = UnitTestResult.STATUS_ERROR;
-                setStackAndMessage(detail, childNode);
-            }
-        }
-        while (childNode.getNext() != null) {
-            // make sure we loop till the end of the elements cursor
-        }
-        if (duration == null) {
-            duration = getTimeAttributeInMS(time);
-        }
-        detail.setDurationMilliseconds(duration);
-        detail.setStatus(status);
-        return detail;
-    }
-
-    private static long getTimeAttributeInMS(String value) throws XMLStreamException {
-        // hardcoded to Locale.ENGLISH see http://jira.codehaus.org/browse/SONAR-602
-        try {
-            Double time = ParsingUtils.parseNumber(value, Locale.ENGLISH);
-            return !Double.isNaN(time) ? (long) ParsingUtils.scaleValue(time * 1000, 3) : 0L;
-        } catch (ParseException e) {
-            throw new XMLStreamException(e);
-        }
-    }
-
-    private static String getTestCaseName(SMInputCursor testCaseCursor) throws XMLStreamException {
-        String classname = testCaseCursor.getAttrValue("classname");
-        String name = testCaseCursor.getAttrValue("name");
+    private static String getTestCaseName(XMLStreamReader reader) {
+        String classname = reader.getAttributeValue(null, "classname");
+        String name = reader.getAttributeValue(null, "name");
         if (StringUtils.contains(classname, "$")) {
             return StringUtils.substringAfter(classname, "$") + "/" + name;
         }
         return name;
     }
 
+    private static long getTimeAttributeInMS(String value) throws XMLStreamException {
+        if (value == null) {
+            return 0L;
+        }
+        try {
+            Number number = NumberFormat.getInstance(Locale.ENGLISH).parse(value);
+            double time = number.doubleValue();
+            return !Double.isNaN(time) ? Math.round(time * 1000.0) : 0L;
+        } catch (ParseException e) {
+            throw new XMLStreamException(e);
+        }
+    }
+
+    private static void skipElement(XMLStreamReader reader) throws XMLStreamException {
+        int depth = 1;
+        while (reader.hasNext() && depth > 0) {
+            int event = reader.next();
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                depth++;
+            } else if (event == XMLStreamConstants.END_ELEMENT) {
+                depth--;
+            }
+        }
+    }
 }

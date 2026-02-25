@@ -5,7 +5,7 @@
     <parent>
         <artifactId>sonar-swift</artifactId>
         <groupId>com.github.sonar-next</groupId>
-        <version>2.0.1</version>
+        <version>2.0.2</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>com.github.sonar-next</groupId>
             <artifactId>commons</artifactId>
-            <version>2.0.1</version>
+            <version>2.0.2</version>
         </dependency>
 
         <dependency>

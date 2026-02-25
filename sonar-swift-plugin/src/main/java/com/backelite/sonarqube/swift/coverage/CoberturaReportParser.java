@@ -52,13 +52,24 @@ public final class CoberturaReportParser {
     public CoberturaReportParser(SensorContext context) {
         this.context = context;
         this.dbfactory = DocumentBuilderFactory.newInstance();
+        try {
+            // Disable DTD loading to avoid network calls and potential hangs
+            dbfactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            dbfactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            dbfactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        } catch (ParserConfigurationException e) {
+            LOGGER.warn("Could not disable DTD loading: {}", e.getMessage());
+        }
     }
 
     public void parseReport(final File xmlFile) {
         try {
+            LOGGER.info("Parsing Cobertura report: {} (size: {} bytes)", xmlFile.getAbsolutePath(), xmlFile.length());
             DocumentBuilder builder = dbfactory.newDocumentBuilder();
             Document document = builder.parse(xmlFile);
-            collectPackageMeasures(document.getElementsByTagName(PACKAGES));
+            NodeList packages = document.getElementsByTagName(PACKAGES);
+            LOGGER.info("Found {} <packages> elements", packages.getLength());
+            collectPackageMeasures(packages);
         } catch (final FileNotFoundException e) {
             LOGGER.error("Cobertura Report not found {}", xmlFile, e);
         } catch (final IOException e) {
@@ -82,6 +93,7 @@ public final class CoberturaReportParser {
     }
 
     private void collectClassMeasures(NodeList nodeList) {
+        LOGGER.info("Processing {} <class> elements", nodeList.getLength());
         for (int i = 0; i < nodeList.getLength(); i++) {
             Node node = nodeList.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {

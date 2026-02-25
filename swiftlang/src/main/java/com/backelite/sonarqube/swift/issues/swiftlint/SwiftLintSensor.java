@@ -58,16 +58,31 @@ public class SwiftLintSensor implements Sensor {
     @Override
     public void execute(SensorContext context) {
         SwiftLintReportParser parser = new SwiftLintReportParser(context);
-        DirectoryScanner scanner = new DirectoryScanner();
-        scanner.setIncludes(new String[]{reportPath()});
-        scanner.setBasedir(context.fileSystem().baseDir().getAbsolutePath());
-        scanner.setCaseSensitive(false);
-        scanner.scan();
-        String[] files = scanner.getIncludedFiles();
+        String path = reportPath();
+        File baseDir = context.fileSystem().baseDir();
 
-        for (String filename : files) {
-            LOGGER.info("Processing SwiftLint report {}", filename);
-            parser.parseReport(new File(filename));
+        // Try as direct file path first (absolute or relative to baseDir)
+        File reportFile = new File(path);
+        if (!reportFile.isAbsolute()) {
+            reportFile = new File(baseDir, path);
+        }
+
+        if (reportFile.exists() && reportFile.isFile()) {
+            LOGGER.info("Processing SwiftLint report {}", reportFile.getAbsolutePath());
+            parser.parseReport(reportFile);
+        } else {
+            // Fall back to Ant pattern matching
+            DirectoryScanner scanner = new DirectoryScanner();
+            scanner.setIncludes(new String[]{path});
+            scanner.setBasedir(baseDir.getAbsolutePath());
+            scanner.setCaseSensitive(false);
+            scanner.scan();
+            String[] files = scanner.getIncludedFiles();
+
+            for (String filename : files) {
+                LOGGER.info("Processing SwiftLint report {}", filename);
+                parser.parseReport(new File(baseDir, filename));
+            }
         }
     }
 }

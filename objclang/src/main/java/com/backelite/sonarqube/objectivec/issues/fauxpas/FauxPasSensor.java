@@ -41,16 +41,31 @@ public class FauxPasSensor implements Sensor {
     }
 
     private void parseReportIn(final String baseDir, final FauxPasReportParser parser) {
-        DirectoryScanner scanner = new DirectoryScanner();
-        scanner.setIncludes(new String[]{reportPath()});
-        scanner.setBasedir(baseDir);
-        scanner.setCaseSensitive(false);
-        scanner.scan();
-        String[] files = scanner.getIncludedFiles();
+        String path = reportPath();
+        File baseDirFile = new File(baseDir);
 
-        for (String filename : files) {
-            LOGGER.info("Processing FauxPas report {}", filename);
-            parser.parseReport(new File(filename));
+        // Try as direct file path first (absolute or relative to baseDir)
+        File reportFile = new File(path);
+        if (!reportFile.isAbsolute()) {
+            reportFile = new File(baseDirFile, path);
+        }
+
+        if (reportFile.exists() && reportFile.isFile()) {
+            LOGGER.info("Processing FauxPas report {}", reportFile.getAbsolutePath());
+            parser.parseReport(reportFile);
+        } else {
+            // Fall back to Ant pattern matching
+            DirectoryScanner scanner = new DirectoryScanner();
+            scanner.setIncludes(new String[]{path});
+            scanner.setBasedir(baseDir);
+            scanner.setCaseSensitive(false);
+            scanner.scan();
+            String[] files = scanner.getIncludedFiles();
+
+            for (String filename : files) {
+                LOGGER.info("Processing FauxPas report {}", filename);
+                parser.parseReport(new File(baseDirFile, filename));
+            }
         }
     }
 

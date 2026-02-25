@@ -61,16 +61,31 @@ public class TailorSensor implements Sensor {
     @Override
     public void execute(SensorContext context) {
         TailorReportParser parser = new TailorReportParser(context);
-        DirectoryScanner scanner = new DirectoryScanner();
-        scanner.setIncludes(new String[]{reportPath()});
-        scanner.setBasedir(context.fileSystem().baseDir().getAbsolutePath());
-        scanner.setCaseSensitive(false);
-        scanner.scan();
-        String[] files = scanner.getIncludedFiles();
+        String path = reportPath();
+        File baseDir = context.fileSystem().baseDir();
 
-        for (String filename : files) {
-            LOGGER.info("Processing Tailor report {}", filename);
-            parser.parseReport(new File(filename));
+        // Try as direct file path first (absolute or relative to baseDir)
+        File reportFile = new File(path);
+        if (!reportFile.isAbsolute()) {
+            reportFile = new File(baseDir, path);
+        }
+
+        if (reportFile.exists() && reportFile.isFile()) {
+            LOGGER.info("Processing Tailor report {}", reportFile.getAbsolutePath());
+            parser.parseReport(reportFile);
+        } else {
+            // Fall back to Ant pattern matching
+            DirectoryScanner scanner = new DirectoryScanner();
+            scanner.setIncludes(new String[]{path});
+            scanner.setBasedir(baseDir.getAbsolutePath());
+            scanner.setCaseSensitive(false);
+            scanner.scan();
+            String[] files = scanner.getIncludedFiles();
+
+            for (String filename : files) {
+                LOGGER.info("Processing Tailor report {}", filename);
+                parser.parseReport(new File(baseDir, filename));
+            }
         }
     }
 }

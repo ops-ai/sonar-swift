@@ -47,12 +47,10 @@ public class LizardReportParser {
 
     private static final String NAME = "name";
     private static final String VALUE = "value";
-    private static final String LINE_COUNT_LABEL = "NCSS";
     private static final String CYCLOMATIC_COMPLEXITY_LABEL = "CCN";
     private static final String FUNCTION_COUNT_LABEL = "Functions";
     private final SensorContext context;
     private final DocumentBuilderFactory dbfactory;
-    private int lineCountIndex;
     private int cyclomaticComplexityIndex;
     private int functionCountIndex;
 
@@ -96,9 +94,7 @@ public class LizardReportParser {
             if (node.getNodeType() == Node.ELEMENT_NODE) {
                 Element element = (Element) node;
                 String label = element.getTextContent();
-                if(LINE_COUNT_LABEL.equalsIgnoreCase(label))
-                    lineCountIndex = i;
-                else if(CYCLOMATIC_COMPLEXITY_LABEL.equalsIgnoreCase(label))
+                if(CYCLOMATIC_COMPLEXITY_LABEL.equalsIgnoreCase(label))
                     cyclomaticComplexityIndex = i;
                 else if(FUNCTION_COUNT_LABEL.equalsIgnoreCase(label))
                     functionCountIndex = i;
@@ -150,13 +146,6 @@ public class LizardReportParser {
             .on(component)
             .forMetric(CoreMetrics.FUNCTIONS)
             .withValue(numberOfFunctions)
-            .save();
-
-        int numberOfLines = Integer.parseInt(values.item(lineCountIndex).getTextContent());
-        context.<Integer>newMeasure()
-            .on(component)
-            .forMetric(CoreMetrics.LINES)
-            .withValue(numberOfLines)
             .save();
     }
 

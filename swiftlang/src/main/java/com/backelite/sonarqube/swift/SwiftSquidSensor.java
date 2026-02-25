@@ -54,7 +54,6 @@ public class SwiftSquidSensor implements Sensor {
             File file = inputFile.file();
             SwiftAstScanner.LineCounts counts = SwiftAstScanner.scanFile(file, conf);
 
-            MeasureUtil.saveMeasure(context, inputFile, CoreMetrics.LINES, counts.getLines());
             MeasureUtil.saveMeasure(context, inputFile, CoreMetrics.NCLOC, counts.getLinesOfCode());
             MeasureUtil.saveMeasure(context, inputFile, CoreMetrics.COMMENT_LINES, counts.getCommentLines());
 

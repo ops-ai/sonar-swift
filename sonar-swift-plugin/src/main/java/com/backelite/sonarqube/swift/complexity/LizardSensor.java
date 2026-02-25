@@ -56,7 +56,15 @@ public class LizardSensor implements Sensor {
 
     @Override
     public void execute(SensorContext context) {
-        File reportFile = new File(context.fileSystem().baseDir(), reportPath());
+        String path = reportPath();
+        File baseDir = context.fileSystem().baseDir();
+
+        // Try as direct file path first (absolute or relative to baseDir)
+        File reportFile = new File(path);
+        if (!reportFile.isAbsolute()) {
+            reportFile = new File(baseDir, path);
+        }
+
         if (!reportFile.isFile()) {
             LOGGER.warn("Lizard report file not found at {}", reportFile.getAbsolutePath());
             return;
